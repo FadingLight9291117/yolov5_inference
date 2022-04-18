@@ -11,10 +11,12 @@ from models.yolo import Model
 from models.common import AutoShape
 
 
-params = dict(
+params = edict(
+    model_name='yolov5m',
+    weight_path='./weights/yolov5m.pt',
     channels=3,
     classes=80,
-    device='gpu',
+    device='cpu',
 )
 
 
@@ -23,24 +25,27 @@ def intersect_dicts(da, db, exclude=()):
     return {k: v for k, v in da.items() if k in db and not any(x in k for x in exclude) and v.shape == db[k].shape}
 
 
-def get_model(path='yolov5s', check_point='', device='gpu'):
+def get_model(path='yolov5s', check_point=None, device='gpu'):
     '''
     params:
         name: yolov5n, yolov5s, yolov5m or yolov5l 
     '''
     cfg = list((Path(__file__).parent /
-               'models').rglob(f'{path.stem}.yaml'))[0]  # model.yaml path
+               'models').rglob(f'{path}.yaml'))[0]  # model.yaml path
 
     model = Model(cfg, params.channels, params.classes)  # create model
+    if check_point:
+        ckpt = torch.load(check_point, map_location=device)  # load
+        msd = model.state_dict()  # model state_dict
+        # checkpoint state_dict as FP32
+        csd = ckpt['model'].float().state_dict()
+        csd = {k: v for k, v in csd.items(
+        ) if msd[k].shape == v.shape}  # filter
+        model.load_state_dict(csd, strict=False)  # load
+        if len(ckpt['model'].names) == params.classes:
+            model.names = ckpt['model'].names  # set class names attribute
 
-    ckpt = torch.load(check_point)
-    csd = ckpt['model'].float().state_dict()  # checkpoint state_dict as FP32
-    csd = intersect_dicts(csd, model.state_dict(),
-                          exclude=['anchors'])  # intersect
-    model.load_state_dict(csd, strict=False)  # load
-    if len(ckpt['model'].names) == params.classes:
-        model.names = ckpt['model'].names  # set class names attribute
-    model = AutoShape(model)  # for file/URI/PIL/cv2/np inputs and NMS
+    model = model.autoshape()  # for file/URI/PIL/cv2/np inputs and NMS
     if params.device == 'gpu':
         model = model.cuda()
     return model
@@ -48,8 +53,9 @@ def get_model(path='yolov5s', check_point='', device='gpu'):
 
 def inference(model, imgs, save_dir):
     model = model.eval()
-    
-        
+    results = model(imgs)
+
+    return results
 
 
 if __name__ == '__main__':
@@ -67,10 +73,11 @@ if __name__ == '__main__':
         imgs = [path.__str__() for path in img_path.glob('*')]
 
     print('loading model...')
-    model = get_model(path='yolov5s', check_point='', device=params.device)
+    model = get_model(path=params.model_name,
+                      check_point=params.weight_path, device=params.device)
 
     print('inferencing...')
     for img_file in imgs:
-        inference(model, imgs, save_dir)
+        results = inference(model, imgs, save_dir)
     print(f'results saved in {save_dir}')
     print('end.')
