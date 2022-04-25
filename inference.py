@@ -90,6 +90,31 @@ def save_result(results, save_path):
         json.dump(results, f)
 
 
+"""
+params:
+res: 
+{
+    "img_name": ...,
+    "img_size": ...,
+    "objects": {
+        "xyxy": ...,
+        "conf: ...,
+        "class_id": ...,
+        "class_name": ..., # face, mask or hat
+    }
+    
+}
+
+
+returns:
+info:
+{
+    "one_face": true or false,
+    "with_mask": true or false,
+    "with_hat": true or false
+}
+
+"""
 def get_info(res):
     objs = res['objects']
     faces = []
