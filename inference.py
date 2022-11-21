@@ -1,13 +1,15 @@
 from pathlib import Path
+from unittest import result
 
 import torch
 from easydict import EasyDict as edict
+from tqdm import tqdm
 
 from models.common import AutoShape, DetectMultiBackend
 
 params = edict(
     # model_name='yolov5s',
-    weight_path='weights/best.pt',
+    weight_path='weights/widerface_l.pt',
     device='gpu',
     conf_thres=0.5,
     iou_thres=0.45,
@@ -115,6 +117,8 @@ info:
 }
 
 """
+
+
 def get_info(res):
     objs = res['objects']
     faces = []
@@ -140,7 +144,7 @@ def get_info(res):
 
 
 if __name__ == '__main__':
-    img_path = './images/face/1076.jpg'
+    img_path = '/home/clz/datasets/for_paper/images/big/'
     save_dir = './results'
 
     img_path = Path(img_path)
@@ -162,14 +166,15 @@ if __name__ == '__main__':
 
     print('preprecessing...')
     imgs = preprocess(imgs)
-
     print('inferencing...')
     results = inference(model, imgs)
-
-    print('postprecessing...')
-    results_preced = postprocess(results)
+    
+    results.save()
+    
+    # print('postprecessing...')
+    # results_preced = postprocess(results)
 
     # save_result(total_res, 'result.json')
 
-    img_info = get_info(results_preced[0])
+    # img_info = get_info(results_preced[0])
     # print(f'results saved in {save_dir}')
